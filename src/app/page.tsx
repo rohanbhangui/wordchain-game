@@ -7,6 +7,7 @@ type WordChain = {
   start_word: string;
   end_word: string;
   solution: string; // Comma-separated list of correct words
+  number_of_words: number; // Total number of words in the chain
 };
 
 const Home = () => {
@@ -22,16 +23,24 @@ const Home = () => {
   );
   const dailyIndex = dateKey % data.length;
 
-  // Select the word chain based on the current mode
-  const selectedItem = (mode === "daily" ? data[dailyIndex] : data[shuffleIndex]) as WordChain;
+  // States for daily mode
+  const dailyItem = data[dailyIndex] as WordChain;
+  const [dailyCorrectWords, setDailyCorrectWords] = useState<string[]>([dailyItem.start_word]);
+
+  // States for shuffle mode
+  const shuffleItem = data[shuffleIndex] as WordChain;
+  const [shuffleCorrectWords, setShuffleCorrectWords] = useState<string[]>([shuffleItem.start_word]);
+
+  // Determine the current mode's data
+  const selectedItem = mode === "daily" ? dailyItem : shuffleItem;
   const startWord = selectedItem.start_word;
   const endWord = selectedItem.end_word;
+  const numberOfWords = selectedItem.number_of_words; // Get the number of words in the chain
   const solutionWords = selectedItem.solution
     .split(",")
     .map((word) => word.trim().toLowerCase()); // Parse solution list
 
   const [input, setInput] = useState(Array(startWord.length).fill(""));
-  const [correctWords, setCorrectWords] = useState<string[]>([startWord]); // Start with the initial word
   const [isShaking, setIsShaking] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -80,8 +89,17 @@ const Home = () => {
     const enteredWord = input.join("").toLowerCase();
 
     // Check if the entered word is in the solution list and not already in the correctWords list
-    if (solutionWords.includes(enteredWord) && !correctWords.includes(enteredWord)) {
-      setCorrectWords((prev) => [...prev, enteredWord]); // Add the word to the list
+    if (solutionWords.includes(enteredWord)) {
+      if (mode === "daily") {
+        if (!dailyCorrectWords.includes(enteredWord)) {
+          setDailyCorrectWords((prev) => [...prev, enteredWord]); // Add the word to the daily list
+        }
+      } else {
+        if (!shuffleCorrectWords.includes(enteredWord)) {
+          setShuffleCorrectWords((prev) => [...prev, enteredWord]); // Add the word to the shuffle list
+        }
+      }
+
       setInput(Array(startWord.length).fill("")); // Clear the inputs
 
       // Reset focus to the first input
@@ -97,6 +115,19 @@ const Home = () => {
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500); // Remove shake effect after 500ms
     }
+  };
+
+  const handleTabSwitch = (newMode: "daily" | "shuffle") => {
+    setMode(newMode);
+    setInput(Array(startWord.length).fill("")); // Reset inputs
+  };
+
+  const handleShuffle = () => {
+    const newShuffleIndex = Math.floor(Math.random() * data.length);
+    setShuffleIndex(newShuffleIndex); // Pick a new random index for shuffle mode
+    const newShuffleStartWord = data[newShuffleIndex].start_word as string;
+    setInput(Array(newShuffleStartWord.length).fill("")); // Reset inputs
+    setShuffleCorrectWords([newShuffleStartWord]); // Reset correct words
   };
 
   const renderWord = (word: string, previousWord: string | null) => {
@@ -119,28 +150,26 @@ const Home = () => {
     );
   };
 
-  const handleShuffle = () => {
-    setShuffleIndex(Math.floor(Math.random() * data.length)); // Pick a new random index for shuffle mode
-    setCorrectWords([data[shuffleIndex].start_word]); // Reset correct words for the new puzzle
-    setInput(Array(data[shuffleIndex].start_word.length).fill("")); // Reset inputs
-  };
-
   return (
     <div className="flex flex-col items-center gap-4 p-8">
       {/* Tabs for switching modes */}
-      <div className="flex gap-4">
+      <div className="flex border border-white rounded-lg overflow-hidden">
         <button
-          onClick={() => setMode("daily")}
+          onClick={() => handleTabSwitch("daily")}
           className={`px-4 py-2 font-bold ${
-            mode === "daily" ? "bg-blue-500 text-white" : "bg-gray-200"
+            mode === "daily"
+              ? "bg-[var(--foreground)] text-[var(--background)]"
+              : "bg-[var(--background)] text-[var(--foreground)]"
           }`}
         >
           Daily Puzzle
         </button>
         <button
-          onClick={() => setMode("shuffle")}
+          onClick={() => handleTabSwitch("shuffle")}
           className={`px-4 py-2 font-bold ${
-            mode === "shuffle" ? "bg-blue-500 text-white" : "bg-gray-200"
+            mode === "shuffle"
+              ? "bg-[var(--foreground)] text-[var(--background)]"
+              : "bg-[var(--background)] text-[var(--foreground)]"
           }`}
         >
           Shuffle Mode
@@ -159,13 +188,13 @@ const Home = () => {
 
       {/* Display start word and end word with an arrow */}
       <div className="text-xl font-bold">
-        {startWord} → {endWord}
+        {startWord} → {endWord} <span className="text-gray-500">({numberOfWords} words)</span>
       </div>
 
       {/* Display correct words */}
       <div className="flex flex-col items-center gap-2">
-        {correctWords.map((word, index) =>
-          renderWord(word, index > 0 ? correctWords[index - 1] : null)
+        {(mode === "daily" ? dailyCorrectWords : shuffleCorrectWords).map((word, index) =>
+          renderWord(word, index > 0 ? (mode === "daily" ? dailyCorrectWords[index - 1] : shuffleCorrectWords[index - 1]) : null)
         )}
       </div>
 
