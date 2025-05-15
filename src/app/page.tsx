@@ -10,17 +10,20 @@ type WordChain = {
 };
 
 const Home = () => {
-  // Generate a deterministic index based on today's date
+  const [mode, setMode] = useState<"daily" | "shuffle">("daily"); // State to toggle between modes
+  const [shuffleIndex, setShuffleIndex] = useState(Math.floor(Math.random() * data.length)); // Random index for shuffle mode
+
+  // Generate a deterministic index based on today's date for the daily puzzle
   const today = new Date();
   const dateKey = parseInt(
     `${today.getFullYear()}${(today.getMonth() + 1)
       .toString()
       .padStart(2, "0")}${today.getDate().toString().padStart(2, "0")}`
   );
-  const randomIndex = dateKey % data.length;
+  const dailyIndex = dateKey % data.length;
 
-  // Select the word chain for today
-  const selectedItem = data[randomIndex] as WordChain;
+  // Select the word chain based on the current mode
+  const selectedItem = (mode === "daily" ? data[dailyIndex] : data[shuffleIndex]) as WordChain;
   const startWord = selectedItem.start_word;
   const endWord = selectedItem.end_word;
   const solutionWords = selectedItem.solution
@@ -67,6 +70,13 @@ const Home = () => {
   };
 
   const handleSubmit = () => {
+    // Ensure all inputs are filled
+    if (input.some((char) => char === "")) {
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500); // Shake animation for incomplete input
+      return;
+    }
+
     const enteredWord = input.join("").toLowerCase();
 
     // Check if the entered word is in the solution list and not already in the correctWords list
@@ -109,8 +119,44 @@ const Home = () => {
     );
   };
 
+  const handleShuffle = () => {
+    setShuffleIndex(Math.floor(Math.random() * data.length)); // Pick a new random index for shuffle mode
+    setCorrectWords([data[shuffleIndex].start_word]); // Reset correct words for the new puzzle
+    setInput(Array(data[shuffleIndex].start_word.length).fill("")); // Reset inputs
+  };
+
   return (
     <div className="flex flex-col items-center gap-4 p-8">
+      {/* Tabs for switching modes */}
+      <div className="flex gap-4">
+        <button
+          onClick={() => setMode("daily")}
+          className={`px-4 py-2 font-bold ${
+            mode === "daily" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
+        >
+          Daily Puzzle
+        </button>
+        <button
+          onClick={() => setMode("shuffle")}
+          className={`px-4 py-2 font-bold ${
+            mode === "shuffle" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
+        >
+          Shuffle Mode
+        </button>
+      </div>
+
+      {/* Shuffle button for shuffle mode */}
+      {mode === "shuffle" && (
+        <button
+          onClick={handleShuffle}
+          className="px-4 py-2 mt-2 font-bold bg-green-500 text-white"
+        >
+          Shuffle
+        </button>
+      )}
+
       {/* Display start word and end word with an arrow */}
       <div className="text-xl font-bold">
         {startWord} → {endWord}
