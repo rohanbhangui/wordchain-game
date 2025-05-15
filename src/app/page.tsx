@@ -1,103 +1,151 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useRef } from "react";
+import data from "@/generation/chainmail_word_chains.json"; // Adjust the path based on your folder structure
+
+type WordChain = {
+  start_word: string;
+  end_word: string;
+  solution: string; // Comma-separated list of correct words
+};
+
+const Home = () => {
+  // Generate a deterministic index based on today's date
+  const today = new Date();
+  const dateKey = parseInt(
+    `${today.getFullYear()}${(today.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}${today.getDate().toString().padStart(2, "0")}`
+  );
+  const randomIndex = dateKey % data.length;
+
+  // Select the word chain for today
+  const selectedItem = data[randomIndex] as WordChain;
+  const startWord = selectedItem.start_word;
+  const endWord = selectedItem.end_word;
+  const solutionWords = selectedItem.solution
+    .split(",")
+    .map((word) => word.trim().toLowerCase()); // Parse solution list
+
+  const [input, setInput] = useState(Array(startWord.length).fill(""));
+  const [correctWords, setCorrectWords] = useState<string[]>([startWord]); // Start with the initial word
+  const [isShaking, setIsShaking] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleInputChange = (value: string, index: number) => {
+    // Allow only letters
+    if (!/^[a-zA-Z]$/.test(value)) return;
+
+    const newInput = [...input];
+    newInput[index] = value.slice(-1); // Only keep the last character
+    setInput(newInput);
+
+    // Move to the next input field if it exists
+    if (index < inputRefs.current.length - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === "Backspace") {
+      const newInput = [...input];
+
+      if (input[index]) {
+        // If the current field has a character, delete it and move to the previous field
+        newInput[index] = "";
+        setInput(newInput);
+        if (index > 0) {
+          inputRefs.current[index - 1]?.focus();
+        }
+      } else if (index > 0) {
+        // If the current field is empty, move to the previous field
+        inputRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === "Enter") {
+      handleSubmit();
+    }
+  };
+
+  const handleSubmit = () => {
+    const enteredWord = input.join("").toLowerCase();
+
+    // Check if the entered word is in the solution list and not already in the correctWords list
+    if (solutionWords.includes(enteredWord) && !correctWords.includes(enteredWord)) {
+      setCorrectWords((prev) => [...prev, enteredWord]); // Add the word to the list
+      setInput(Array(startWord.length).fill("")); // Clear the inputs
+
+      // Reset focus to the first input
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 0);
+
+      // Check if the entered word is the final word in the solution
+      if (enteredWord === endWord.toLowerCase()) {
+        window.alert("You won!");
+      }
+    } else {
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500); // Remove shake effect after 500ms
+    }
+  };
+
+  const renderWord = (word: string, previousWord: string | null) => {
+    return (
+      <div className="flex gap-1">
+        {word.split("").map((char, index) => {
+          const isChanged = previousWord ? char !== previousWord[index] : false;
+          const colorClass = previousWord
+            ? isChanged
+              ? "text-green-500"
+              : "text-gray-500"
+            : "text-white";
+          return (
+            <span key={index} className={`${colorClass} font-bold`}>
+              {char}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="flex flex-col items-center gap-4 p-8">
+      {/* Display start word and end word with an arrow */}
+      <div className="text-xl font-bold">
+        {startWord} → {endWord}
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      {/* Display correct words */}
+      <div className="flex flex-col items-center gap-2">
+        {correctWords.map((word, index) =>
+          renderWord(word, index > 0 ? correctWords[index - 1] : null)
+        )}
+      </div>
+
+      {/* Input fields for each character */}
+      <div
+        className={`flex gap-2 mt-4 ${
+          isShaking ? "animate-shake" : ""
+        }`}
+      >
+        {startWord.split("").map((_, index) => (
+          <input
+            key={index}
+            type="text"
+            maxLength={1}
+            value={input[index]}
+            onChange={(e) => handleInputChange(e.target.value, index)}
+            onKeyDown={(e) => handleKeyDown(e, index)}
+            ref={(el) => {
+              inputRefs.current[index] = el;
+            }}
+            className="w-8 h-10 text-center border-b-2 border-gray-400 focus:outline-none"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        ))}
+      </div>
     </div>
   );
-}
+};
+
+export default Home;
