@@ -1,3 +1,9 @@
+Created a game where there are a chain of words where each owrd in the list has 1 letter different, get from the start word to the end word
+
+
+URL: https://wordchain-game.vercel.app/
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
